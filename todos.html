@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게시판 — JayKwon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F7F8FA; --card: #FFFFFF; --text: #111827;
+      --sub: #6B7280; --point: #2563EB; --danger: #DC2626;
+      --border: #E5E7EB; --radius: 12px; --max-w: 860px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: rgba(247,248,250,0.88); backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border); z-index: 100; height: 56px;
+    }
+    .nav-inner {
+      max-width: var(--max-w); margin: 0 auto; padding: 0 2rem;
+      height: 100%; display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--point); text-decoration: none; }
+    .nav-links { display: flex; gap: 1.75rem; }
+    .nav-links a { font-size: 14px; color: var(--sub); text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); font-weight: 500; }
+
+    main { max-width: var(--max-w); margin: 0 auto; padding: 88px 2rem 4rem; }
+
+    .page-header { margin-bottom: 2rem; animation: fadeUp 0.5s ease both; }
+    .page-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+    .page-header p { font-size: 14px; color: var(--sub); }
+
+    .write-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.5rem;
+      margin-bottom: 2rem; animation: fadeUp 0.5s ease 0.1s both;
+    }
+    .write-card h2 { font-size: 14px; font-weight: 500; color: var(--sub); margin-bottom: 1rem; font-family: 'JetBrains Mono', monospace; }
+    .form-group { margin-bottom: 12px; }
+    .form-group input, .form-group textarea {
+      width: 100%; padding: 10px 14px;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+      color: var(--text); background: var(--bg);
+      outline: none; transition: border-color 0.2s; resize: none;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--point); background: #fff; }
+    .form-group textarea { height: 80px; }
+    .form-footer { display: flex; justify-content: flex-end; }
+    .btn-submit {
+      background: var(--point); color: #fff; border: none;
+      padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 500;
+      cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: background 0.2s;
+    }
+    .btn-submit:hover { background: #1d4ed8; }
+
+    .filter-row { display: flex; gap: 8px; margin-bottom: 1rem; animation: fadeUp 0.5s ease 0.15s both; }
+    .filter-btn {
+      padding: 5px 14px; border-radius: 99px; font-size: 13px;
+      border: 1px solid var(--border); background: var(--card); color: var(--sub);
+      cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif;
+    }
+    .filter-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+    .stats { display: flex; gap: 12px; margin-bottom: 1.5rem; animation: fadeUp 0.5s ease 0.2s both; }
+    .stat { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 13px; color: var(--sub); }
+    .stat strong { font-size: 18px; font-weight: 700; color: var(--text); display: block; }
+
+    .todo-list { display: flex; flex-direction: column; gap: 10px; }
+    .todo-item {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.25rem;
+      display: flex; align-items: flex-start; gap: 14px;
+      transition: box-shadow 0.2s, opacity 0.3s; animation: fadeUp 0.4s ease both;
+    }
+    .todo-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .todo-item.done { opacity: 0.55; }
+
+    .check-btn {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 2px solid var(--border); background: none; cursor: pointer;
+      flex-shrink: 0; margin-top: 2px;
+      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .check-btn:hover { border-color: var(--point); }
+    .check-btn.checked { background: var(--point); border-color: var(--point); }
+    .check-btn.checked::after {
+      content: ''; display: block; width: 5px; height: 9px;
+      border-right: 2px solid #fff; border-bottom: 2px solid #fff;
+      transform: rotate(45deg) translate(-1px, -1px);
+    }
+
+    .todo-body { flex: 1; min-width: 0; }
+    .todo-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+    .todo-item.done .todo-title { text-decoration: line-through; color: var(--sub); }
+    .todo-content { font-size: 13px; color: var(--sub); line-height: 1.6; white-space: pre-wrap; }
+    .todo-meta { font-size: 11px; color: #9CA3AF; margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+
+    .item-actions { display: flex; gap: 2px; flex-shrink: 0; }
+    .edit-btn, .del-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 14px; padding: 3px 7px; border-radius: 4px;
+      transition: color 0.15s, background 0.15s; color: #D1D5DB;
+    }
+    .edit-btn:hover { color: var(--point); background: rgba(37,99,235,0.07); }
+    .del-btn:hover { color: var(--danger); background: rgba(220,38,38,0.07); }
+
+    .edit-form { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .edit-form input, .edit-form textarea {
+      width: 100%; padding: 7px 10px;
+      border: 1px solid var(--point); border-radius: 6px;
+      font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
+      color: var(--text); background: #fff; outline: none; resize: none;
+    }
+    .edit-form textarea { height: 64px; }
+    .edit-actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .btn-save { background: var(--point); color: #fff; border: none; padding: 5px 14px; border-radius: 6px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
+    .btn-cancel { background: none; color: var(--sub); border: 1px solid var(--border); padding: 5px 14px; border-radius: 6px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
+
+    .empty { text-align: center; padding: 4rem 2rem; color: var(--sub); font-size: 14px; }
+    .empty span { display: block; font-size: 32px; margin-bottom: 12px; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @media (max-width: 600px) {
+      .stats { flex-wrap: wrap; }
+      .stat { flex: 1; min-width: 80px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="index.html">JayKwon.dev</a>
+    <div class="nav-links">
+      <a href="index.html">홈</a>
+      <a href="todos.html" class="active">게시판</a>
+      <a href="study.html">공부기록</a>
+      <a href="login.html">로그인</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="page-header">
+    <h1>할일 게시판</h1>
+    <p>공부한 내용, 해야 할 일을 기록하세요.</p>
+  </div>
+
+  <div class="write-card">
+    <h2>// new_entry</h2>
+    <div class="form-group">
+      <input type="text" id="titleInput" placeholder="제목을 입력하세요" maxlength="80">
+    </div>
+    <div class="form-group">
+      <textarea id="contentInput" placeholder="내용을 입력하세요 (선택)"></textarea>
+    </div>
+    <div class="form-footer">
+      <button class="btn-submit" onclick="addTodo()">추가하기</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><strong id="statTotal">0</strong>전체</div>
+    <div class="stat"><strong id="statDone">0</strong>완료</div>
+    <div class="stat"><strong id="statLeft">0</strong>남은 항목</div>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all', this)">전체</button>
+    <button class="filter-btn" onclick="setFilter('active', this)">진행중</button>
+    <button class="filter-btn" onclick="setFilter('done', this)">완료</button>
+  </div>
+
+  <div class="todo-list" id="todoList"></div>
+</main>
+
+<script>
+  let todos = JSON.parse(localStorage.getItem('todos') || '[]');
+  let filter = 'all';
+  let editingId = null;
+
+  function save() { localStorage.setItem('todos', JSON.stringify(todos)); }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  function addTodo() {
+    const title = document.getElementById('titleInput').value.trim();
+    const content = document.getElementById('contentInput').value.trim();
+    if (!title) { document.getElementById('titleInput').focus(); return; }
+    todos.unshift({ id: Date.now(), title, content, done: false, createdAt: new Date().toISOString() });
+    save();
+    document.getElementById('titleInput').value = '';
+    document.getElementById('contentInput').value = '';
+    render();
+  }
+
+  function toggleDone(id) {
+    todos = todos.map(t => t.id === id ? { ...t, done: !t.done } : t);
+    save(); render();
+  }
+
+  function deleteTodo(id) {
+    if (!confirm('삭제할까요?')) return;
+    todos = todos.filter(t => t.id !== id);
+    save(); render();
+  }
+
+  function startEdit(id) { editingId = id; render(); const inp = document.getElementById('editTitle_'+id); if(inp){inp.focus();inp.select();} }
+  function cancelEdit() { editingId = null; render(); }
+  function saveEdit(id) {
+    const title = document.getElementById('editTitle_'+id).value.trim();
+    const content = document.getElementById('editContent_'+id).value.trim();
+    if (!title) return;
+    todos = todos.map(t => t.id === id ? {...t, title, content, updatedAt: new Date().toISOString()} : t);
+    editingId = null; save(); render();
+  }
+
+  function setFilter(f, btn) {
+    filter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function render() {
+    const list = document.getElementById('todoList');
+    const filtered = todos.filter(t =>
+      filter === 'all' ? true : filter === 'done' ? t.done : !t.done
+    );
+
+    document.getElementById('statTotal').textContent = todos.length;
+    document.getElementById('statDone').textContent = todos.filter(t => t.done).length;
+    document.getElementById('statLeft').textContent = todos.filter(t => !t.done).length;
+
+    if (!filtered.length) {
+      list.innerHTML = `<div class="empty"><span>📋</span>아직 항목이 없어요.<br>위에서 추가해보세요!</div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map((t, i) => {
+      const meta = t.updatedAt ? `수정됨 · ${formatDate(t.updatedAt)}` : formatDate(t.createdAt);
+      if (editingId === t.id) {
+        return `
+          <div class="todo-item" style="animation-delay:${i*0.05}s">
+            <button class="check-btn ${t.done?'checked':''}" onclick="toggleDone(${t.id})"></button>
+            <div class="edit-form">
+              <input id="editTitle_${t.id}" value="${escHtml(t.title)}" maxlength="80" onkeydown="if(event.key==='Enter')saveEdit(${t.id});if(event.key==='Escape')cancelEdit()">
+              <textarea id="editContent_${t.id}" onkeydown="if(event.key==='Escape')cancelEdit()">${escHtml(t.content)}</textarea>
+              <div class="edit-actions">
+                <button class="btn-cancel" onclick="cancelEdit()">취소</button>
+                <button class="btn-save" onclick="saveEdit(${t.id})">저장</button>
+              </div>
+            </div>
+          </div>`;
+      }
+      return `
+        <div class="todo-item ${t.done?'done':''}" style="animation-delay:${i*0.05}s">
+          <button class="check-btn ${t.done?'checked':''}" onclick="toggleDone(${t.id})"></button>
+          <div class="todo-body">
+            <div class="todo-title">${escHtml(t.title)}</div>
+            ${t.content ? `<div class="todo-content">${escHtml(t.content)}</div>` : ''}
+            <div class="todo-meta">${meta}</div>
+          </div>
+          <div class="item-actions">
+            <button class="edit-btn" onclick="startEdit(${t.id})" title="수정">✎</button>
+            <button class="del-btn" onclick="deleteTodo(${t.id})" title="삭제">✕</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  document.getElementById('titleInput').addEventListener('keydown', e => { if(e.key==='Enter') addTodo(); });
+  render();
+</script>
+</body>
+</html>
