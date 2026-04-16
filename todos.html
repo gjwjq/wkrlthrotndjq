@@ -6,6 +6,7 @@
   <title>게시판 — JayKwon</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg: #F7F8FA; --card: #FFFFFF; --text: #111827;
@@ -25,9 +26,11 @@
       height: 100%; display: flex; align-items: center; justify-content: space-between;
     }
     .nav-logo { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--point); text-decoration: none; }
-    .nav-links { display: flex; gap: 1.75rem; }
+    .nav-links { display: flex; gap: 1.75rem; align-items: center; }
     .nav-links a { font-size: 14px; color: var(--sub); text-decoration: none; transition: color 0.2s; }
     .nav-links a:hover, .nav-links a.active { color: var(--text); font-weight: 500; }
+    .nav-user { font-size: 13px; color: var(--sub); font-family: 'JetBrains Mono', monospace; }
+    .nav-logout { font-size: 13px; color: var(--danger); cursor: pointer; border: none; background: none; font-family: 'Noto Sans KR', sans-serif; }
 
     main { max-width: var(--max-w); margin: 0 auto; padding: 88px 2rem 4rem; }
 
@@ -76,7 +79,7 @@
       background: var(--card); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 1rem 1.25rem;
       display: flex; align-items: flex-start; gap: 14px;
-      transition: box-shadow 0.2s, opacity 0.3s; animation: fadeUp 0.4s ease both;
+      transition: box-shadow 0.2s; animation: fadeUp 0.4s ease both;
     }
     .todo-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
     .todo-item.done { opacity: 0.55; }
@@ -100,6 +103,7 @@
     .todo-item.done .todo-title { text-decoration: line-through; color: var(--sub); }
     .todo-content { font-size: 13px; color: var(--sub); line-height: 1.6; white-space: pre-wrap; }
     .todo-meta { font-size: 11px; color: #9CA3AF; margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+    .todo-author { font-size: 11px; color: var(--point); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
 
     .item-actions { display: flex; gap: 2px; flex-shrink: 0; }
     .edit-btn, .del-btn {
@@ -124,6 +128,8 @@
 
     .empty { text-align: center; padding: 4rem 2rem; color: var(--sub); font-size: 14px; }
     .empty span { display: block; font-size: 32px; margin-bottom: 12px; }
+
+    .loading { text-align: center; padding: 3rem; color: var(--sub); font-size: 14px; }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(14px); }
@@ -180,51 +186,133 @@
     <button class="filter-btn" onclick="setFilter('done', this)">완료</button>
   </div>
 
-  <div class="todo-list" id="todoList"></div>
+  <div class="todo-list" id="todoList"><div class="loading">불러오는 중...</div></div>
 </main>
 
 <script>
-  let todos = JSON.parse(localStorage.getItem('todos') || '[]');
+  // ===================== Supabase 설정 =====================
+  const SUPABASE_URL = 'https://eqwxzlkamtifvkrhxwcs.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_tzfzmMEM6w03xg08XN1SpA_9lHshBSq';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  // =========================================================
+
+  let todos = [];
   let filter = 'all';
   let editingId = null;
+  let currentUser = null;
 
-  function save() { localStorage.setItem('todos', JSON.stringify(todos)); }
+  // 현재 로그인 유저 확인
+  async function initAuth() {
+    const { data: { user } } = await sb.auth.getUser();
+    currentUser = user;
+    updateNavUser();
+  }
 
+  function updateNavUser() {
+    const navLinks = document.querySelector('.nav-links');
+    const existing = document.getElementById('navUserInfo');
+    if (existing) existing.remove();
+
+    if (currentUser) {
+      const email = currentUser.email;
+      navLinks.insertAdjacentHTML('beforeend', `
+        <span id="navUserInfo" style="display:flex;gap:10px;align-items:center">
+          <span class="nav-user">${email.split('@')[0]}</span>
+          <button class="nav-logout" onclick="logout()">로그아웃</button>
+        </span>
+      `);
+      document.querySelector('a[href="login.html"]').style.display = 'none';
+    }
+  }
+
+  async function logout() {
+    await sb.auth.signOut();
+    currentUser = null;
+    location.reload();
+  }
+
+  // 날짜 포맷
   function formatDate(iso) {
     const d = new Date(iso);
     return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   }
 
-  function addTodo() {
-    const title = document.getElementById('titleInput').value.trim();
-    const content = document.getElementById('contentInput').value.trim();
-    if (!title) { document.getElementById('titleInput').focus(); return; }
-    todos.unshift({ id: Date.now(), title, content, done: false, createdAt: new Date().toISOString() });
-    save();
-    document.getElementById('titleInput').value = '';
-    document.getElementById('contentInput').value = '';
+  // 글 불러오기
+  async function loadTodos() {
+    const { data, error } = await sb.from('todos').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    todos = data || [];
     render();
   }
 
-  function toggleDone(id) {
-    todos = todos.map(t => t.id === id ? { ...t, done: !t.done } : t);
-    save(); render();
+  // 글 추가
+  async function addTodo() {
+    const title = document.getElementById('titleInput').value.trim();
+    const content = document.getElementById('contentInput').value.trim();
+    if (!title) { document.getElementById('titleInput').focus(); return; }
+
+    const row = {
+      title,
+      content,
+      is_done: false,
+      user_id: currentUser ? currentUser.id : null
+    };
+
+    const { error } = await sb.from('todos').insert(row);
+    if (error) { alert('추가 실패: ' + error.message); return; }
+
+    document.getElementById('titleInput').value = '';
+    document.getElementById('contentInput').value = '';
+    await loadTodos();
   }
 
-  function deleteTodo(id) {
+  // 완료 토글
+  async function toggleDone(id, currentDone) {
+    const { error } = await sb.from('todos').update({ is_done: !currentDone }).eq('id', id);
+    if (error) { alert('업데이트 실패'); return; }
+    await loadTodos();
+  }
+
+  // 삭제
+  async function deleteTodo(id, userId) {
+    // 로그인 유저면 본인 글만, 비회원이면 누구 글이든 삭제 가능
+    if (currentUser && userId && currentUser.id !== userId) {
+      alert('본인 글만 삭제할 수 있어요.');
+      return;
+    }
     if (!confirm('삭제할까요?')) return;
-    todos = todos.filter(t => t.id !== id);
-    save(); render();
+    const { error } = await sb.from('todos').delete().eq('id', id);
+    if (error) { alert('삭제 실패'); return; }
+    await loadTodos();
   }
 
-  function startEdit(id) { editingId = id; render(); const inp = document.getElementById('editTitle_'+id); if(inp){inp.focus();inp.select();} }
+  // 수정 시작
+  function startEdit(id) {
+    editingId = id;
+    render();
+    const inp = document.getElementById('editTitle_' + id);
+    if (inp) { inp.focus(); inp.select(); }
+  }
+
   function cancelEdit() { editingId = null; render(); }
-  function saveEdit(id) {
-    const title = document.getElementById('editTitle_'+id).value.trim();
-    const content = document.getElementById('editContent_'+id).value.trim();
+
+  // 수정 저장
+  async function saveEdit(id, userId) {
+    if (currentUser && userId && currentUser.id !== userId) {
+      alert('본인 글만 수정할 수 있어요.');
+      return;
+    }
+    const title = document.getElementById('editTitle_' + id).value.trim();
+    const content = document.getElementById('editContent_' + id).value.trim();
     if (!title) return;
-    todos = todos.map(t => t.id === id ? {...t, title, content, updatedAt: new Date().toISOString()} : t);
-    editingId = null; save(); render();
+
+    const { error } = await sb.from('todos').update({
+      title, content, updated_at: new Date().toISOString()
+    }).eq('id', id);
+
+    if (error) { alert('수정 실패'); return; }
+    editingId = null;
+    await loadTodos();
   }
 
   function setFilter(f, btn) {
@@ -234,17 +322,29 @@
     render();
   }
 
-  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // 수정/삭제 버튼 표시 여부
+  // 비회원: 모든 글 수정/삭제 가능
+  // 로그인 유저: 본인 글만 수정/삭제 가능
+  function canEdit(userId) {
+    if (!currentUser) return true;           // 비회원 → 다 가능
+    if (!userId) return true;                // 비회원이 쓴 글 → 다 가능
+    return currentUser.id === userId;        // 로그인 유저 → 본인 글만
+  }
 
   function render() {
     const list = document.getElementById('todoList');
     const filtered = todos.filter(t =>
-      filter === 'all' ? true : filter === 'done' ? t.done : !t.done
+      filter === 'all' ? true : filter === 'done' ? t.is_done : !t.is_done
     );
 
     document.getElementById('statTotal').textContent = todos.length;
-    document.getElementById('statDone').textContent = todos.filter(t => t.done).length;
-    document.getElementById('statLeft').textContent = todos.filter(t => !t.done).length;
+    document.getElementById('statDone').textContent = todos.filter(t => t.is_done).length;
+    document.getElementById('statLeft').textContent = todos.filter(t => !t.is_done).length;
 
     if (!filtered.length) {
       list.innerHTML = `<div class="empty"><span>📋</span>아직 항목이 없어요.<br>위에서 추가해보세요!</div>`;
@@ -252,39 +352,57 @@
     }
 
     list.innerHTML = filtered.map((t, i) => {
-      const meta = t.updatedAt ? `수정됨 · ${formatDate(t.updatedAt)}` : formatDate(t.createdAt);
+      const meta = t.updated_at && t.updated_at !== t.created_at
+        ? `수정됨 · ${formatDate(t.updated_at)}`
+        : formatDate(t.created_at);
+      const authorTag = t.user_id
+        ? `<div class="todo-author">로그인 사용자</div>`
+        : `<div class="todo-author" style="color:var(--sub)">비회원</div>`;
+      const editable = canEdit(t.user_id);
+
       if (editingId === t.id) {
         return `
           <div class="todo-item" style="animation-delay:${i*0.05}s">
-            <button class="check-btn ${t.done?'checked':''}" onclick="toggleDone(${t.id})"></button>
+            <button class="check-btn ${t.is_done?'checked':''}" onclick="toggleDone(${t.id}, ${t.is_done})"></button>
             <div class="edit-form">
-              <input id="editTitle_${t.id}" value="${escHtml(t.title)}" maxlength="80" onkeydown="if(event.key==='Enter')saveEdit(${t.id});if(event.key==='Escape')cancelEdit()">
-              <textarea id="editContent_${t.id}" onkeydown="if(event.key==='Escape')cancelEdit()">${escHtml(t.content)}</textarea>
+              <input id="editTitle_${t.id}" value="${escHtml(t.title)}" maxlength="80"
+                onkeydown="if(event.key==='Enter')saveEdit(${t.id},'${t.user_id}');if(event.key==='Escape')cancelEdit()">
+              <textarea id="editContent_${t.id}"
+                onkeydown="if(event.key==='Escape')cancelEdit()">${escHtml(t.content)}</textarea>
               <div class="edit-actions">
                 <button class="btn-cancel" onclick="cancelEdit()">취소</button>
-                <button class="btn-save" onclick="saveEdit(${t.id})">저장</button>
+                <button class="btn-save" onclick="saveEdit(${t.id},'${t.user_id}')">저장</button>
               </div>
             </div>
           </div>`;
       }
+
       return `
-        <div class="todo-item ${t.done?'done':''}" style="animation-delay:${i*0.05}s">
-          <button class="check-btn ${t.done?'checked':''}" onclick="toggleDone(${t.id})"></button>
+        <div class="todo-item ${t.is_done?'done':''}" style="animation-delay:${i*0.05}s">
+          <button class="check-btn ${t.is_done?'checked':''}" onclick="toggleDone(${t.id}, ${t.is_done})"></button>
           <div class="todo-body">
             <div class="todo-title">${escHtml(t.title)}</div>
             ${t.content ? `<div class="todo-content">${escHtml(t.content)}</div>` : ''}
             <div class="todo-meta">${meta}</div>
+            ${authorTag}
           </div>
           <div class="item-actions">
-            <button class="edit-btn" onclick="startEdit(${t.id})" title="수정">✎</button>
-            <button class="del-btn" onclick="deleteTodo(${t.id})" title="삭제">✕</button>
+            ${editable ? `<button class="edit-btn" onclick="startEdit(${t.id})" title="수정">✎</button>` : ''}
+            ${editable ? `<button class="del-btn" onclick="deleteTodo(${t.id},'${t.user_id}')" title="삭제">✕</button>` : ''}
           </div>
         </div>`;
     }).join('');
   }
 
-  document.getElementById('titleInput').addEventListener('keydown', e => { if(e.key==='Enter') addTodo(); });
-  render();
+  document.getElementById('titleInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTodo();
+  });
+
+  // 초기화
+  (async () => {
+    await initAuth();
+    await loadTodos();
+  })();
 </script>
 </body>
 </html>
