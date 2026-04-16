@@ -6,145 +6,69 @@
   <title>JayKwon — 개인 홈페이지</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --bg: #F7F8FA;
-      --card: #FFFFFF;
-      --text: #111827;
-      --sub: #6B7280;
-      --point: #2563EB;
-      --danger: #DC2626;
-      --border: #E5E7EB;
-      --radius: 12px;
-      --max-w: 860px;
+      --bg: #F7F8FA; --card: #FFFFFF; --text: #111827;
+      --sub: #6B7280; --point: #2563EB; --danger: #DC2626;
+      --border: #E5E7EB; --radius: 12px; --max-w: 860px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-
-    /* NAV */
     nav {
       position: fixed; top: 0; left: 0; right: 0;
-      background: rgba(247,248,250,0.88);
-      backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border);
-      z-index: 100; height: 56px;
+      background: rgba(247,248,250,0.88); backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border); z-index: 100; height: 56px;
     }
     .nav-inner {
-      max-width: var(--max-w);
-      margin: 0 auto;
-      padding: 0 2rem;
-      height: 100%;
-      display: flex; align-items: center; justify-content: space-between;
+      max-width: var(--max-w); margin: 0 auto; padding: 0 2rem;
+      height: 100%; display: flex; align-items: center; justify-content: space-between;
     }
-    .nav-logo {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 15px; font-weight: 700;
-      color: var(--point); text-decoration: none;
-    }
-    .nav-links { display: flex; gap: 1.75rem; }
-    .nav-links a {
-      font-size: 14px; color: var(--sub);
-      text-decoration: none; transition: color 0.2s;
-    }
-    .nav-links a:hover, .nav-links a.active { color: var(--text); }
-    .nav-links a.active { font-weight: 500; }
-
-    /* LAYOUT */
-    .container {
-      max-width: var(--max-w);
-      margin: 0 auto;
-      padding: 0 2rem;
-    }
-
-    /* HERO */
-    .hero {
-      padding: 140px 0 80px;
-      animation: fadeUp 0.7s ease both;
-    }
+    .nav-logo { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--point); text-decoration: none; }
+    .nav-links { display: flex; gap: 1.75rem; align-items: center; }
+    .nav-links a { font-size: 14px; color: var(--sub); text-decoration: none; transition: color 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); font-weight: 500;}
+    .nav-user { font-size: 13px; color: var(--sub); font-family: 'JetBrains Mono', monospace; }
+    .nav-logout { font-size: 13px; color: var(--danger); cursor: pointer; border: none; background: none; font-family: 'Noto Sans KR', sans-serif; }
+    .container { max-width: var(--max-w); margin: 0 auto; padding: 0 2rem; }
+    .hero { padding: 140px 0 80px; animation: fadeUp 0.7s ease both; }
     .hero-tag {
-      display: inline-block;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px; color: var(--point);
-      background: rgba(37,99,235,0.08);
-      border: 1px solid rgba(37,99,235,0.18);
-      border-radius: 99px; padding: 4px 14px;
-      margin-bottom: 1.5rem; letter-spacing: 0.05em;
+      display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--point);
+      background: rgba(37,99,235,0.08); border: 1px solid rgba(37,99,235,0.18);
+      border-radius: 99px; padding: 4px 14px; margin-bottom: 1.5rem; letter-spacing: 0.05em;
     }
-    .hero h1 {
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 700; line-height: 1.2;
-      letter-spacing: -0.02em; margin-bottom: 1rem;
-    }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 1rem; }
     .hero h1 span { color: var(--point); }
-    .hero p {
-      font-size: 16px; color: var(--sub);
-      line-height: 1.8; margin-bottom: 2rem;
-      max-width: 480px;
-    }
+    .hero p { font-size: 16px; color: var(--sub); line-height: 1.8; margin-bottom: 2rem; max-width: 480px; }
     .hero-btns { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn {
-      display: inline-block; padding: 10px 22px;
-      border-radius: var(--radius); font-size: 14px;
-      font-weight: 500; text-decoration: none;
-      transition: all 0.18s; cursor: pointer; border: none;
+      display: inline-block; padding: 10px 22px; border-radius: var(--radius); font-size: 14px;
+      font-weight: 500; text-decoration: none; transition: all 0.18s; cursor: pointer; border: none;
       font-family: 'Noto Sans KR', sans-serif;
     }
     .btn-primary { background: var(--point); color: #fff; }
     .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
     .btn-outline { background: var(--card); color: var(--text); border: 1px solid var(--border); }
     .btn-outline:hover { border-color: var(--point); color: var(--point); }
-
-    /* DIVIDER */
     .divider { border: none; border-top: 1px solid var(--border); margin: 0; }
-
-    /* SECTION */
     .section { padding: 60px 0; animation: fadeUp 0.6s ease both; }
     .section-label {
-      font-size: 11px; font-weight: 500; color: var(--sub);
-      text-transform: uppercase; letter-spacing: 0.12em;
-      margin-bottom: 1.5rem;
-      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 500; color: var(--sub); text-transform: uppercase;
+      letter-spacing: 0.12em; margin-bottom: 1.5rem; font-family: 'JetBrains Mono', monospace;
     }
-
-    /* CARDS */
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
-    .card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1.25rem 1.5rem;
-      transition: box-shadow 0.2s, transform 0.2s;
-    }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; transition: box-shadow 0.2s, transform 0.2s; }
     .card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); transform: translateY(-2px); }
     .card-tag {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px; color: var(--point);
-      background: rgba(37,99,235,0.08);
-      border-radius: 5px; padding: 2px 8px;
-      display: inline-block; margin-bottom: 0.9rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--point);
+      background: rgba(37,99,235,0.08); border-radius: 5px; padding: 2px 8px; display: inline-block; margin-bottom: 0.9rem;
     }
     .card h3 { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
     .card p { font-size: 13px; color: var(--sub); line-height: 1.7; }
-
-    /* FOOTER */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 2rem 0;
-      font-size: 13px; color: var(--sub);
-    }
-    .footer-inner {
-      max-width: var(--max-w); margin: 0 auto;
-      padding: 0 2rem;
-      display: flex; justify-content: space-between; align-items: center;
-      flex-wrap: wrap; gap: 8px;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(18px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @media (max-width: 600px) {
-      .hero { padding: 110px 0 60px; }
-      .footer-inner { justify-content: center; }
-    }
+    footer { border-top: 1px solid var(--border); padding: 2rem 0; font-size: 13px; color: var(--sub); }
+    .footer-inner { max-width: var(--max-w); margin: 0 auto; padding: 0 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 600px) { .hero { padding: 110px 0 60px; } .footer-inner { justify-content: center; } }
   </style>
 </head>
 <body>
@@ -152,11 +76,11 @@
 <nav>
   <div class="nav-inner">
     <a class="nav-logo" href="index.html">JayKwon.dev</a>
-    <div class="nav-links">
+    <div class="nav-links" id="navLinks">
       <a href="index.html" class="active">홈</a>
       <a href="todos.html">게시판</a>
       <a href="study.html">공부기록</a>
-      <a href="login.html">로그인</a>
+      <a href="login.html" id="loginLink">로그인</a>
     </div>
   </div>
 </nav>
@@ -169,6 +93,18 @@
     <div class="hero-btns">
       <a href="todos.html" class="btn btn-primary">게시판 보기</a>
       <a href="study.html" class="btn btn-outline">공부 기록</a>
+    </div>
+  </section>
+</div>
+
+<hr class="divider">
+
+<div class="container">
+  <section class="section">
+    <div class="section-label">// github activity</div>
+    <div class="card" style="padding: 1.5rem; text-align: center; overflow-x: auto;">
+      <h3 style="margin-bottom: 1rem; text-align: left;">최근 커밋 기록</h3>
+      <img src="https://ghchart.rshah.org/2563EB/gjwjq" alt="GitHub Commits Graph" style="width: 100%; min-width: 600px; display: block; margin: 0 auto;">
     </div>
   </section>
 </div>
@@ -192,7 +128,7 @@
       <div class="card">
         <div class="card-tag">03 / 진행중</div>
         <h3>개인 홈페이지 제작</h3>
-        <p>게시판, 공부기록, 로그인 등 기능을 단계별로 구현 중입니다.</p>
+        <p>게시판, 공부기록, 로그인 등 기능을 단계별로 구현 완료했습니다.</p>
       </div>
     </div>
   </section>
@@ -205,5 +141,25 @@
   </div>
 </footer>
 
+<script>
+  const SUPABASE_URL = 'https://eqwxzlkamtifvkrhxwcs.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_tzfzmMEM6w03xg08XN1SpA_9lHshBSq';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  async function initAuth() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (user) {
+      document.getElementById('loginLink').style.display = 'none';
+      document.getElementById('navLinks').insertAdjacentHTML('beforeend', `
+        <span id="navUserInfo" style="display:flex;gap:10px;align-items:center">
+          <span class="nav-user">${user.email.split('@')[0]}</span>
+          <button class="nav-logout" onclick="logout()">로그아웃</button>
+        </span>
+      `);
+    }
+  }
+  async function logout() { await sb.auth.signOut(); location.reload(); }
+  initAuth();
+</script>
 </body>
 </html>

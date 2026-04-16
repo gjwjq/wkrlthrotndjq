@@ -6,6 +6,7 @@
   <title>공부 기록 — JayKwon</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg: #F7F8FA; --card: #FFFFFF; --text: #111827;
@@ -14,123 +15,57 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-
-    nav {
-      position: fixed; top: 0; left: 0; right: 0;
-      background: rgba(247,248,250,0.88); backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border); z-index: 100; height: 56px;
-    }
-    .nav-inner {
-      max-width: var(--max-w); margin: 0 auto; padding: 0 2rem;
-      height: 100%; display: flex; align-items: center; justify-content: space-between;
-    }
+    nav { position: fixed; top: 0; left: 0; right: 0; background: rgba(247,248,250,0.88); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); z-index: 100; height: 56px; }
+    .nav-inner { max-width: var(--max-w); margin: 0 auto; padding: 0 2rem; height: 100%; display: flex; align-items: center; justify-content: space-between; }
     .nav-logo { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--point); text-decoration: none; }
-    .nav-links { display: flex; gap: 1.75rem; }
+    .nav-links { display: flex; gap: 1.75rem; align-items: center; }
     .nav-links a { font-size: 14px; color: var(--sub); text-decoration: none; transition: color 0.2s; }
-    .nav-links a:hover, .nav-links a.active { color: var(--text); }
-    .nav-links a.active { font-weight: 500; }
-
+    .nav-links a:hover, .nav-links a.active { color: var(--text); font-weight: 500; }
+    .nav-user { font-size: 13px; color: var(--sub); font-family: 'JetBrains Mono', monospace; }
+    .nav-logout { font-size: 13px; color: var(--danger); cursor: pointer; border: none; background: none; font-family: 'Noto Sans KR', sans-serif; }
     main { max-width: var(--max-w); margin: 0 auto; padding: 88px 2rem 4rem; }
-
     .page-header { margin-bottom: 2rem; animation: fadeUp 0.5s ease both; }
     .page-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
     .page-header p { font-size: 14px; color: var(--sub); }
-
-    /* 입력 폼 */
-    .write-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1.5rem;
-      margin-bottom: 2rem; animation: fadeUp 0.5s ease 0.1s both;
-    }
-    .write-card h2 { font-size: 14px; font-weight: 500; color: var(--sub); margin-bottom: 1rem; font-family: 'JetBrains Mono', monospace; }
+    
+    /* 관리자 작성 폼은 기본적으로 숨김 */
+    #writeFormContainer { display: none; }
+    
+    .write-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem; animation: fadeUp 0.5s ease 0.1s both; }
+    .write-card h2 { font-size: 14px; font-weight: 500; color: var(--point); margin-bottom: 1rem; font-family: 'JetBrains Mono', monospace; }
     .form-row { display: grid; grid-template-columns: 1fr 160px; gap: 10px; margin-bottom: 10px; }
     .form-group { margin-bottom: 10px; }
-    .form-group input, .form-group textarea, .form-group select {
-      width: 100%; padding: 10px 14px;
-      border: 1px solid var(--border); border-radius: 8px;
-      font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
-      color: var(--text); background: var(--bg);
-      outline: none; transition: border-color 0.2s; resize: none;
-    }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: 'Noto Sans KR', sans-serif; color: var(--text); background: var(--bg); outline: none; transition: border-color 0.2s; resize: none; }
     .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--point); background: #fff; }
     .form-group textarea { height: 80px; }
+    
+    /* 파일 인풋 스타일 */
+    input[type="file"] { padding: 8px 14px; font-size: 13px; background: #fff; cursor: pointer; }
+    
     .form-footer { display: flex; justify-content: flex-end; }
-    .btn-submit {
-      background: var(--point); color: #fff; border: none;
-      padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 500;
-      cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: background 0.2s;
-    }
+    .btn-submit { background: var(--point); color: #fff; border: none; padding: 9px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; transition: background 0.2s; }
     .btn-submit:hover { background: #1d4ed8; }
-
-    /* 카테고리 필터 */
     .filter-row { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; animation: fadeUp 0.5s ease 0.15s both; }
-    .filter-btn {
-      padding: 5px 14px; border-radius: 99px; font-size: 13px;
-      border: 1px solid var(--border); background: var(--card); color: var(--sub);
-      cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif;
-    }
+    .filter-btn { padding: 5px 14px; border-radius: 99px; font-size: 13px; border: 1px solid var(--border); background: var(--card); color: var(--sub); cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans KR', sans-serif; }
     .filter-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
-
-    /* 카테고리 색상 뱃지 */
-    .badge {
-      display: inline-block; font-size: 11px; font-weight: 500;
-      padding: 2px 9px; border-radius: 99px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-    .badge-html  { background: #FEF3C7; color: #92400E; }
-    .badge-css   { background: #DBEAFE; color: #1E40AF; }
-    .badge-js    { background: #FEF9C3; color: #854D0E; }
-    .badge-php   { background: #EDE9FE; color: #5B21B6; }
-    .badge-db    { background: #DCFCE7; color: #166534; }
-    .badge-etc   { background: #F1F5F9; color: #475569; }
-
-    /* 목록 */
+    .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 9px; border-radius: 99px; font-family: 'JetBrains Mono', monospace; }
+    .badge-html  { background: #FEF3C7; color: #92400E; } .badge-css   { background: #DBEAFE; color: #1E40AF; } .badge-js    { background: #FEF9C3; color: #854D0E; } .badge-php   { background: #EDE9FE; color: #5B21B6; } .badge-db    { background: #DCFCE7; color: #166534; } .badge-etc   { background: #F1F5F9; color: #475569; }
     .study-list { display: flex; flex-direction: column; gap: 10px; }
-    .study-item {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1rem 1.25rem;
-      display: flex; align-items: flex-start; gap: 14px;
-      transition: box-shadow 0.2s; animation: fadeUp 0.4s ease both;
-    }
+    .study-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 10px; transition: box-shadow 0.2s; animation: fadeUp 0.4s ease both; position: relative; }
     .study-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
-    .study-body { flex: 1; min-width: 0; }
     .study-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
-    .study-title { font-size: 15px; font-weight: 500; }
-    .study-content { font-size: 13px; color: var(--sub); line-height: 1.6; white-space: pre-wrap; margin-top: 4px; }
+    .study-title { font-size: 16px; font-weight: 700; }
+    .study-content { font-size: 14px; color: var(--sub); line-height: 1.6; white-space: pre-wrap; }
+    .study-image { max-width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid var(--border); }
     .study-meta { font-size: 11px; color: #9CA3AF; margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
-
-    .item-actions { display: flex; gap: 2px; flex-shrink: 0; }
-    .edit-btn, .del-btn {
-      background: none; border: none; cursor: pointer;
-      font-size: 14px; padding: 3px 7px; border-radius: 4px;
-      transition: color 0.15s, background 0.15s; color: #D1D5DB;
-    }
-    .edit-btn:hover { color: var(--point); background: rgba(37,99,235,0.07); }
-    .del-btn:hover { color: var(--danger); background: rgba(220,38,38,0.07); }
-
-    /* 인라인 수정 */
-    .edit-form { display: flex; flex-direction: column; gap: 8px; flex: 1; }
-    .edit-form input, .edit-form textarea, .edit-form select {
-      width: 100%; padding: 7px 10px;
-      border: 1px solid var(--point); border-radius: 6px;
-      font-size: 14px; font-family: 'Noto Sans KR', sans-serif;
-      color: var(--text); background: #fff; outline: none; resize: none;
-    }
-    .edit-form textarea { height: 64px; }
-    .edit-actions { display: flex; gap: 6px; justify-content: flex-end; }
-    .btn-save { background: var(--point); color: #fff; border: none; padding: 5px 14px; border-radius: 6px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
-    .btn-cancel { background: none; color: var(--sub); border: 1px solid var(--border); padding: 5px 14px; border-radius: 6px; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
-
+    
+    .del-btn { position: absolute; top: 1.25rem; right: 1.5rem; background: none; border: none; font-size: 14px; color: #D1D5DB; cursor: pointer; transition: color 0.15s; }
+    .del-btn:hover { color: var(--danger); }
+    
     .empty { text-align: center; padding: 4rem 2rem; color: var(--sub); font-size: 14px; }
     .empty span { display: block; font-size: 32px; margin-bottom: 12px; }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(14px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @media (max-width: 600px) {
-      .form-row { grid-template-columns: 1fr; }
-    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -138,11 +73,11 @@
 <nav>
   <div class="nav-inner">
     <a class="nav-logo" href="index.html">JayKwon.dev</a>
-    <div class="nav-links">
+    <div class="nav-links" id="navLinks">
       <a href="index.html">홈</a>
       <a href="todos.html">게시판</a>
       <a href="study.html" class="active">공부기록</a>
-      <a href="login.html">로그인</a>
+      <a href="login.html" id="loginLink">로그인</a>
     </div>
   </div>
 </nav>
@@ -150,31 +85,32 @@
 <main>
   <div class="page-header">
     <h1>공부 기록</h1>
-    <p>공부한 내용을 카테고리별로 기록하세요.</p>
+    <p>공부한 내용을 카테고리별로 기록하세요. (관리자 전용)</p>
   </div>
 
-  <div class="write-card">
-    <h2>// new_entry</h2>
-    <div class="form-row">
-      <div class="form-group" style="margin:0">
-        <input type="text" id="titleInput" placeholder="공부한 내용 제목" maxlength="80">
+  <div id="writeFormContainer">
+    <div class="write-card">
+      <h2>// admin_only : new_study_entry</h2>
+      <div class="form-row">
+        <div class="form-group" style="margin:0">
+          <input type="text" id="titleInput" placeholder="공부한 내용 제목" maxlength="80">
+        </div>
+        <div class="form-group" style="margin:0">
+          <select id="categoryInput">
+            <option value="html">HTML</option><option value="css">CSS</option><option value="js">JavaScript</option>
+            <option value="php">PHP / Laravel</option><option value="db">DB / SQL</option><option value="etc">기타</option>
+          </select>
+        </div>
       </div>
-      <div class="form-group" style="margin:0">
-        <select id="categoryInput">
-          <option value="html">HTML</option>
-          <option value="css">CSS</option>
-          <option value="js">JavaScript</option>
-          <option value="php">PHP / Laravel</option>
-          <option value="db">DB / SQL</option>
-          <option value="etc">기타</option>
-        </select>
+      <div class="form-group">
+        <textarea id="contentInput" placeholder="공부 내용 메모"></textarea>
       </div>
-    </div>
-    <div class="form-group">
-      <textarea id="contentInput" placeholder="공부 내용 메모 (선택)"></textarea>
-    </div>
-    <div class="form-footer">
-      <button class="btn-submit" onclick="addStudy()">추가하기</button>
+      <div class="form-group">
+        <input type="file" id="imageInput" accept="image/*">
+      </div>
+      <div class="form-footer">
+        <button class="btn-submit" id="submitBtn" onclick="addStudy()">업로드 & 추가하기</button>
+      </div>
     </div>
   </div>
 
@@ -192,47 +128,115 @@
 </main>
 
 <script>
-  let items = JSON.parse(localStorage.getItem('study') || '[]');
+  const SUPABASE_URL = 'https://eqwxzlkamtifvkrhxwcs.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_tzfzmMEM6w03xg08XN1SpA_9lHshBSq';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const ADMIN_EMAIL = 'umjunsick6015@gmail.com'; // 관리자 이메일 설정
+  let items = [];
   let filter = 'all';
-  let editingId = null;
+  let currentUser = null;
 
   const LABELS = { html:'HTML', css:'CSS', js:'JavaScript', php:'PHP / Laravel', db:'DB / SQL', etc:'기타' };
   const BADGES = { html:'badge-html', css:'badge-css', js:'badge-js', php:'badge-php', db:'badge-db', etc:'badge-etc' };
 
-  function save() { localStorage.setItem('study', JSON.stringify(items)); }
+  async function initAuth() {
+    const { data: { user } } = await sb.auth.getUser();
+    currentUser = user;
+    if (user) {
+      document.getElementById('loginLink').style.display = 'none';
+      document.getElementById('navLinks').insertAdjacentHTML('beforeend', `
+        <span id="navUserInfo" style="display:flex;gap:10px;align-items:center">
+          <span class="nav-user">${user.email.split('@')[0]}</span>
+          <button class="nav-logout" onclick="logout()">로그아웃</button>
+        </span>
+      `);
+    }
+
+    // 관리자일 경우에만 작성 폼 노출
+    if (currentUser && currentUser.email === ADMIN_EMAIL) {
+      document.getElementById('writeFormContainer').style.display = 'block';
+    }
+  }
+
+  async function logout() { await sb.auth.signOut(); location.reload(); }
 
   function formatDate(iso) {
+    if (!iso) return '';
     const d = new Date(iso);
     return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   }
 
-  function addStudy() {
-    const title = document.getElementById('titleInput').value.trim();
-    const content = document.getElementById('contentInput').value.trim();
-    const category = document.getElementById('categoryInput').value;
-    if (!title) { document.getElementById('titleInput').focus(); return; }
-    items.unshift({ id: Date.now(), title, content, category, createdAt: new Date().toISOString() });
-    save();
-    document.getElementById('titleInput').value = '';
-    document.getElementById('contentInput').value = '';
+  async function loadStudies() {
+    const { data, error } = await sb.from('studies').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    items = data || [];
     render();
   }
 
-  function deleteItem(id) {
-    if (!confirm('삭제할까요?')) return;
-    items = items.filter(t => t.id !== id);
-    save(); render();
+  async function addStudy() {
+    // 오직 관리자만 실행 가능
+    if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+      alert('관리자만 작성할 수 있습니다.'); return;
+    }
+
+    const title = document.getElementById('titleInput').value.trim();
+    const content = document.getElementById('contentInput').value.trim();
+    const category = document.getElementById('categoryInput').value;
+    const fileInput = document.getElementById('imageInput');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (!title) { document.getElementById('titleInput').focus(); return; }
+
+    submitBtn.innerText = '업로드 중...';
+    submitBtn.disabled = true;
+
+    let image_url = null;
+
+    // 이미지가 첨부되었다면 Supabase Storage에 업로드
+    if (fileInput.files.length > 0) {
+      const file = fileInput.files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await sb.storage.from('study_images').upload(fileName, file);
+      if (uploadError) {
+        alert('이미지 업로드 실패: ' + uploadError.message);
+        submitBtn.innerText = '업로드 & 추가하기';
+        submitBtn.disabled = false;
+        return;
+      }
+
+      // 업로드 성공 후 퍼블릭 URL 받아오기
+      const { data: publicUrlData } = sb.storage.from('study_images').getPublicUrl(fileName);
+      image_url = publicUrlData.publicUrl;
+    }
+
+    const row = {
+      title, content, category, image_url,
+      user_id: currentUser.id,
+      author_name: currentUser.email.split('@')[0]
+    };
+
+    const { error } = await sb.from('studies').insert(row);
+    
+    submitBtn.innerText = '업로드 & 추가하기';
+    submitBtn.disabled = false;
+
+    if (error) { alert('추가 실패: ' + error.message); return; }
+
+    // 폼 초기화
+    document.getElementById('titleInput').value = '';
+    document.getElementById('contentInput').value = '';
+    document.getElementById('imageInput').value = '';
+    await loadStudies();
   }
 
-  function startEdit(id) { editingId = id; render(); const inp = document.getElementById('editTitle_'+id); if(inp){inp.focus();inp.select();} }
-  function cancelEdit() { editingId = null; render(); }
-  function saveEdit(id) {
-    const title = document.getElementById('editTitle_'+id).value.trim();
-    const content = document.getElementById('editContent_'+id).value.trim();
-    const category = document.getElementById('editCategory_'+id).value;
-    if (!title) return;
-    items = items.map(t => t.id === id ? {...t, title, content, category, updatedAt: new Date().toISOString()} : t);
-    editingId = null; save(); render();
+  async function deleteItem(id) {
+    if (!currentUser || currentUser.email !== ADMIN_EMAIL) { alert('권한이 없습니다.'); return; }
+    if (!confirm('삭제할까요?')) return;
+    await sb.from('studies').delete().eq('id', id);
+    await loadStudies();
   }
 
   function setFilter(f, btn) {
@@ -242,61 +246,38 @@
     render();
   }
 
-  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-  function categoryOptions(selected) {
-    return Object.entries(LABELS).map(([v,l]) =>
-      `<option value="${v}" ${selected===v?'selected':''}>${l}</option>`
-    ).join('');
-  }
+  function escHtml(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
 
   function render() {
     const list = document.getElementById('studyList');
     const filtered = items.filter(t => filter === 'all' || t.category === filter);
+    const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
 
     if (!filtered.length) {
-      list.innerHTML = `<div class="empty"><span>📚</span>아직 기록이 없어요.<br>위에서 추가해보세요!</div>`;
+      list.innerHTML = `<div class="empty"><span>📚</span>아직 기록이 없어요.</div>`;
       return;
     }
 
     list.innerHTML = filtered.map((t, i) => {
-      const meta = t.updatedAt ? `수정됨 · ${formatDate(t.updatedAt)}` : formatDate(t.createdAt);
-      if (editingId === t.id) {
-        return `
-          <div class="study-item" style="animation-delay:${i*0.05}s">
-            <div class="edit-form">
-              <div style="display:grid;grid-template-columns:1fr 160px;gap:8px">
-                <input id="editTitle_${t.id}" value="${escHtml(t.title)}" maxlength="80" onkeydown="if(event.key==='Escape')cancelEdit()">
-                <select id="editCategory_${t.id}">${categoryOptions(t.category)}</select>
-              </div>
-              <textarea id="editContent_${t.id}" onkeydown="if(event.key==='Escape')cancelEdit()">${escHtml(t.content)}</textarea>
-              <div class="edit-actions">
-                <button class="btn-cancel" onclick="cancelEdit()">취소</button>
-                <button class="btn-save" onclick="saveEdit(${t.id})">저장</button>
-              </div>
-            </div>
-          </div>`;
-      }
+      const meta = t.updated_at && t.updated_at !== t.created_at ? `수정됨 · ${formatDate(t.updated_at)}` : formatDate(t.created_at);
+      const imgTag = t.image_url ? `<img src="${t.image_url}" class="study-image" alt="Study Image">` : '';
+      
       return `
         <div class="study-item" style="animation-delay:${i*0.05}s">
-          <div class="study-body">
-            <div class="study-top">
-              <span class="badge ${BADGES[t.category]}">${LABELS[t.category]}</span>
-              <span class="study-title">${escHtml(t.title)}</span>
-            </div>
-            ${t.content ? `<div class="study-content">${escHtml(t.content)}</div>` : ''}
-            <div class="study-meta">${meta}</div>
+          <div class="study-top">
+            <span class="badge ${BADGES[t.category]}">${LABELS[t.category]}</span>
+            <span class="study-title">${escHtml(t.title)}</span>
           </div>
-          <div class="item-actions">
-            <button class="edit-btn" onclick="startEdit(${t.id})" title="수정">✎</button>
-            <button class="del-btn" onclick="deleteItem(${t.id})" title="삭제">✕</button>
-          </div>
+          ${t.content ? `<div class="study-content">${escHtml(t.content)}</div>` : ''}
+          ${imgTag}
+          <div class="study-meta">${meta}</div>
+          <div style="font-size:11px;color:var(--point);margin-top:4px;font-family:'JetBrains Mono',monospace;">${t.author_name || '관리자'}</div>
+          ${isAdmin ? `<button class="del-btn" onclick="deleteItem(${t.id})" title="삭제">✕</button>` : ''}
         </div>`;
     }).join('');
   }
 
-  document.getElementById('titleInput').addEventListener('keydown', e => { if(e.key==='Enter') addStudy(); });
-  render();
+  (async () => { await initAuth(); await loadStudies(); })();
 </script>
 </body>
 </html>
